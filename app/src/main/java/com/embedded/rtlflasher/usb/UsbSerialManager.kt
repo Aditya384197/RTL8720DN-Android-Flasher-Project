@@ -11,13 +11,6 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.util.Log
 import com.embedded.rtlflasher.model.UsbConnectionState
-import com.hoho.android.usbserial.driver.CdcAcmSerialDriver
-import com.hoho.android.usbserial.driver.Ch34xSerialDriver
-import com.hoho.android.usbserial.driver.Cp21xxSerialDriver
-import com.hoho.android.usbserial.driver.FtdiSerialDriver
-import com.hoho.android.usbserial.driver.ProbeTable
-import com.hoho.android.usbserial.driver.ProlificSerialDriver
-import com.hoho.android.usbserial.driver.UsbSerialDriver
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
 import kotlinx.coroutines.CoroutineScope
@@ -84,15 +77,8 @@ class UsbSerialManager(private val context: Context) {
     }
 
     fun scanAndConnect() {
-        val customTable = ProbeTable().apply {
-            // Include standard CDC, FTDI, CP210x, CH34x, Prolific
-            addDriver(Cp21xxSerialDriver::class.java)
-            addDriver(Ch34xSerialDriver::class.java)
-            addDriver(FtdiSerialDriver::class.java)
-            addDriver(ProlificSerialDriver::class.java)
-            addDriver(CdcAcmSerialDriver::class.java)
-        }
-        val prober = UsbSerialProber(customTable)
+        // Default prober already covers CDC, FTDI, CP210x, CH34x and Prolific.
+        val prober = UsbSerialProber.getDefaultProber()
         val availableDrivers = prober.findAllDrivers(usbManager)
 
         if (availableDrivers.isEmpty()) {
