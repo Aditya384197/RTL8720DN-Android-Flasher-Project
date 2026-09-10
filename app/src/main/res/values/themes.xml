@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.RTL8720DNFlasher" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
