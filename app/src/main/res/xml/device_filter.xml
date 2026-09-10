@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Silicon Labs CP210x family (CP2102, CP2104, CP2108) -->
+    <usb-device vendor-id="4292" />
+    <!-- QinHeng WCH CH340 / CH341 family -->
+    <usb-device vendor-id="6790" />
+    <!-- FTDI FT232R / FT2232 family -->
+    <usb-device vendor-id="1027" />
+    <!-- Prolific PL2303 family -->
+    <usb-device vendor-id="1659" />
+    <!-- Arduino / CDC ACM -->
+    <usb-device vendor-id="9025" />
+    <usb-device vendor-id="10755" />
+    <!-- Raspberry Pi RP2040 / Pico USB -->
+    <usb-device vendor-id="11914" />
+</resources>
