@@ -91,6 +91,33 @@ class FlasherViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun startErase() {
+        if (_isFlashing.value) return
+        flashingJob = viewModelScope.launch {
+            _isFlashing.value = true
+            flasher.eraseOnly(
+                slots = _slots.value,
+                config = _config.value,
+                listener = object : Rtl8720dnFlasher.FlashingListener {
+                    override fun onLog(level: LogLevel, message: String, hexDump: String?) {
+                        addLog(level, message, hexDump)
+                    }
+
+                    override fun onOverallProgress(progress: Float, writtenBytes: Long, totalBytes: Long, speedKbps: Float) {}
+
+                    override fun onSlotProgress(slotId: Int, progress: Float, status: SlotStatus, error: String?) {
+                        _slots.update { list ->
+                            list.map { slot ->
+                                if (slot.id == slotId) slot.copy(status = status, error = error) else slot
+                            }
+                        }
+                    }
+                }
+            )
+            _isFlashing.value = false
+        }
+    }
+
     fun startFlashing() {
         if (_isFlashing.value) return
         flashingJob = viewModelScope.launch {
