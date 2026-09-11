@@ -99,6 +99,49 @@ fun FlasherScreen(viewModel: FlasherViewModel) {
                 }
             }
 
+            // Flash Settings Card (Baud Rate, Flash Mode, Flash Size, Erase Mode)
+            Text("Flash Settings", style = MaterialTheme.typography.titleMedium)
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LabeledDropdown(
+                        label = "Flash Speed (Baud)",
+                        selected = config.baudRate.toString(),
+                        options = listOf("115200", "230400", "460800", "921600", "1500000", "3000000"),
+                        onSelected = { viewModel.updateConfig { c -> c.copy(baudRate = it.toInt()) } }
+                    )
+                    LabeledDropdown(
+                        label = "Flash Mode",
+                        selected = config.flashMode,
+                        options = listOf("UART_DOWNLOAD", "AUTO_DOWNLOAD", "MANUAL_BOOT"),
+                        onSelected = { viewModel.updateConfig { c -> c.copy(flashMode = it) } }
+                    )
+                    LabeledDropdown(
+                        label = "Flash Size",
+                        selected = config.flashSize,
+                        options = listOf("1MB", "2MB", "4MB", "8MB", "16MB"),
+                        onSelected = { viewModel.updateConfig { c -> c.copy(flashSize = it) } }
+                    )
+                    LabeledDropdown(
+                        label = "Erase Mode",
+                        selected = config.eraseMode.name,
+                        options = EraseMode.entries.map { it.name },
+                        onSelected = { viewModel.updateConfig { c -> c.copy(eraseMode = EraseMode.valueOf(it)) } }
+                    )
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = { viewModel.startErase() },
+                    enabled = connectionState.isConnected && !isFlashing,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.DeleteSweep, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Erase Chip")
+                }
+            }
+
             // Multi-Binary Slots (1 to 5)
             Text("Target Binaries (1 to 5)", style = MaterialTheme.typography.titleMedium)
             slots.forEach { slot ->
@@ -144,6 +187,41 @@ fun FlasherScreen(viewModel: FlasherViewModel) {
 
             // Console Window
             TerminalLogView(logs = logs, onClear = { viewModel.clearLogs() })
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LabeledDropdown(
+    label: String,
+    selected: String,
+    options: List<String>,
+    onSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selected,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onSelected(option)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }
