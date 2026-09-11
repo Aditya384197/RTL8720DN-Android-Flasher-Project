@@ -27,6 +27,68 @@ class Rtl8720dnFlasher(
         fun onSlotProgress(slotId: Int, progress: Float, status: SlotStatus, error: String? = null)
     }
 
+    suspend fun eraseOnly(
+        slots: List<FlashSlot>,
+        config: FlashConfig,
+        listener: FlashingListener
+    ): Boolean = withContext(Dispatchers.IO) {
+        val activeSlots = slots.filter { it.isEnabled }
+        try {
+            listener.onLog(LogLevel.INFO, "Starting Erase Session for RTL8720DN (BW16)")
+
+            if (config.autoResetDtrRts) {
+                listener.onLog(LogLevel.INFO, "Pulsing DTR/RTS to trigger Bootloader Mode (PA08 -> GND)...")
+                usbSerialManager.pulseDtrRtsReset()
+                delay(120)
+            }
+
+            listener.onLog(LogLevel.INFO, "Initiating ROM Handshake (0x55 sequence)...")
+            val rxBuf = ByteArray(64)
+            for (attempt in 1..4) {
+                if (!coroutineContext.isActive) throw CancellationException()
+                usbSerialManager.write(AmebaProtocol.SYNC_SEQUENCE, 500)
+                delay(80)
+                if (usbSerialManager.read(rxBuf, 300) > 0) {
+                    listener.onLog(LogLevel.RX, "Handshake ACK received from RTL8720DN Bootrom!")
+                    break
+                }
+            }
+
+            when (config.eraseMode) {
+                EraseMode.FULL_CHIP -> {
+                    listener.onLog(LogLevel.WARN, "Executing Full Chip Erase on SPI Flash (${config.flashSize})...")
+                    usbSerialManager.write(byteArrayOf(AmebaProtocol.CMD_CHIP_ERASE), 1000)
+                    delay(2000)
+                    listener.onLog(LogLevel.SUCCESS, "Chip erased.")
+                }
+                EraseMode.REGION -> {
+                    for (slot in activeSlots) {
+                        if (!coroutineContext.isActive) throw CancellationException()
+                        listener.onSlotProgress(slot.id, 0f, SlotStatus.ERASING)
+                        listener.onLog(LogLevel.INFO, "Erasing region ${slot.addressHex}...")
+                        usbSerialManager.write(byteArrayOf(AmebaProtocol.CMD_CHIP_ERASE), 1000)
+                        delay(300)
+                        listener.onSlotProgress(slot.id, 0f, SlotStatus.IDLE)
+                    }
+                    listener.onLog(LogLevel.SUCCESS, "Selected regions erased.")
+                }
+                EraseMode.NONE -> {
+                    listener.onLog(LogLevel.WARN, "Erase mode is set to NONE — nothing to erase.")
+                }
+            }
+
+            listener.onLog(LogLevel.INFO, "Sending Soft Reset Command (0x0A)...")
+            usbSerialManager.write(byteArrayOf(AmebaProtocol.CMD_SYSTEM_RESET), 500)
+            true
+        } catch (e: CancellationException) {
+            listener.onLog(LogLevel.WARN, "Erase aborted by user.")
+            false
+        } catch (e: Exception) {
+            listener.onLog(LogLevel.ERROR, "Erase failed: ${e.localizedMessage}")
+            false
+        }
+    }
+
     suspend fun flashBinaries(
         slots: List<FlashSlot>,
         config: FlashConfig,
